@@ -1,0 +1,10 @@
+numpy
+pandas
+openpyxl
+scikit-learn
+statsmodels
+omegaconf
+wandb
+plotly
+nbformat
+ipykernel

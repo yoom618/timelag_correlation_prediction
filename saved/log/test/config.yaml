@@ -1,0 +1,34 @@
+dataset:
+  args:
+    in_columns:
+    - test_X
+    out_columns:
+    - test_X
+    input_days: 24
+    time_lag: 12
+    scaling: standard
+model: LSTM
+device: cpu
+wandb: false
+loss: MSELoss
+metrics:
+- MAELoss
+optimizer:
+  type: Adam
+  args:
+    lr: 0.001
+lr_scheduler:
+  enable: true
+  type: ReduceLROnPlateau
+  args:
+    factor: 0.1
+    patience: 5
+train_config:
+  epochs: 20
+  save_period: 5
+  save_best_model: true
+  print_period: 1
+  save_result: true
+save_dir:
+  checkpoint: saved/checkpoint
+timestamp: toy

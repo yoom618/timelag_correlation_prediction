@@ -1,0 +1,72 @@
+memo: '남겨둘 메모가 있다면 여기에.
+
+  여러 줄로도 작성 가능
+
+  wandb 사용 시 wandb의 description으로 사용됩니다.'
+how: tvt
+seed: 0
+device: cpu
+model: MLP
+wandb: false
+model_args:
+  MLP:
+    n_hidden_list:
+    - 128
+    - 64
+    dropout_p: 0.2
+    batch_norm: false
+dataset:
+  type: PriceDataset
+  args:
+    data_dir: data/
+    start_date: '2023-01-01'
+    end_date: '2023-10-27'
+    in_columns:
+    - USD_Price
+    - Gold_Price
+    out_columns:
+    - USD_Price
+    - Silver_Price
+    input_days: 24
+    time_lag: 12
+    train_ratio: 0.9
+    test_num: 10
+    scaling: standard
+dataloader:
+  type: DataLoader
+  args:
+    batch_size: 128
+    num_workers: 0
+optimizer:
+  type: Adam
+  args:
+    lr: 0.001
+    weight_decay: 0.0001
+    amsgrad: false
+loss: MSELoss
+metrics:
+- MAELoss
+lr_scheduler:
+  enable: true
+  type: ReduceLROnPlateau
+  args:
+    mode: min
+    factor: 0.1
+train_config:
+  epochs: 100
+  print_period: 5
+  save_best_model: true
+  save_period: 10
+  resume:
+    enable: false
+  save_result: true
+eval_config:
+  dataset_phase: test
+  save_result: true
+save_dir:
+  log: saved/log
+  checkpoint: saved/checkpoint
+  result: saved/result
+config: config/config_baseline.yaml
+merge: true
+timestamp: '20250106_022930'

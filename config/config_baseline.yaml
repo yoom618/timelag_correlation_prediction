@@ -1,0 +1,117 @@
+# config.yaml
+# 직접 하이퍼파라미터를 수정 및 추가하여 관리할 수 있는 설정 파일
+
+memo: |-
+    남겨둘 메모가 있다면 여기에.
+    여러 줄로도 작성 가능
+    wandb 사용 시 wandb의 description으로 사용됩니다.
+
+# 아래의 항목들은 argparser로 받은 인자를 우선적으로 사용합니다.
+#   $ python main.py --config config.yaml --seed 2024
+#   과 같이 실행할 경우 seed는 0이 아닌 2024로 설정됩니다.
+
+# 계층 구조를 가지는 항목은 딕셔너리 형태로 작성하시면 됩니다.
+#   $ python main.py --config config.yaml --model_args '{"MLP": {"n_hidden_list": [256, 128], "dropout_p": 0.3}}'
+
+# 특히나 주로 사용하게 되는 8가지 항목은 다음과 같습니다.
+how: tvt     # 실행 타입. tvt: 학습+검증+테스트 / tv: 학습+검증 / tt: 학습+테스트 / p: 예측(=테스트)만
+checkpoint: 'saved/checkpoint/model_sample.pt'   # 예측만 할 경우에 필요한 모델 체크포인트 경로
+seed: 0         # 시드 고정
+device: cpu     # 가능한 값 : cpu, cuda, mps(맥북 m1칩)
+model: LSTM     # 모델 선택
+wandb: False                            # wandb 사용 여부
+wandb_project: 'correlation-prediction' # wandb 프로젝트 이름
+run_name: ''                            # wandb 실행 이름. 빈 문자열일 경우 자동 생성
+
+
+
+model_args:     # 위에서 정한 model에 해당하는 파라미터만 실질적으로 사용됩니다.
+    MLP:
+        n_hidden_list: [128, 64]
+        dropout_p: 0.2
+        batch_norm: False
+    LSTM:
+        lstm_squeeze: False     # True: 전체 시퀀스 사용 / False: 마지막 시퀀스만 사용
+        lstm_hidden_dim: 128
+        lstm_n_layer: 2
+        bidirectional: False
+        fc_hidden_list: []
+        dropout_p: 0.2
+        batch_norm: False
+    CNN:
+        cnn_hidden_list: [16, 16]
+        kernel_size: 3
+        stride: 2
+        padding: 1
+        fc_hidden_list: [64, 128]
+        dropout_p: 0.2
+        batch_norm: False
+    
+
+dataset:
+    type: PriceDataset
+    args:
+        data_dir: data/
+        start_date: 2023-01-01  # e.g. 2013-01-01
+        end_date: 2023-10-27    # e.g. 2023-10-27
+        in_columns:         # [ USD_Price, Gold_Price ] 와 같이 작성해도 됨
+            - USD_Price
+            - Gold_Price
+        out_columns:        # [ USD_Price, Gold_Price ] 와 같이 작성해도 됨
+            - USD_Price
+            - Silver_Price
+        input_days: 24      # e.g. 24일치 데이터를 사용
+        time_lag: 12        # e.g. 12일 후의 가격을 예측
+        
+        # 여기서부터는 kwargs로 전달되는 인자들
+        train_ratio: 0.9
+        test_num: 10
+        scaling: standard   # standard, minmax, False 중 하나
+
+dataloader:
+    type: DataLoader
+    args:
+        batch_size: 128     # 배치 사이즈
+        num_workers: 0      # 멀티프로세서 수. 0: 메인프로세서만 사용
+
+
+optimizer:
+    type: Adam      # 사용가능한 optimizer: torch.optim.Optimizer 클래스 (https://pytorch.org/docs/stable/optim.html#algorithms)
+    args:           # 사용하고자 하는 클래스의 파라미터를 참고하여 추가해주시면 되며, 관계가 없는 파라미터는 main.py에서 자동으로 삭제 처리됩니다.
+        lr: 1e-3            # 예) 모든 옵티마이저에서 사용되는 학습률
+        weight_decay: 1e-4  # 예) Adam 등 / L2 정규화 가중치
+        amsgrad: False      # 예) Adam 등 / amsgrad 사용 여부
+
+loss: MSELoss               # 직접 정의한 loss.py 내 클래스 (현재 MSELoss, MAELoss, RMSELoss, MAPE가 정의되어 있음)
+
+metrics: [ MAELoss ]  # 평가 지표. 마찬가지로 loss.py에 정의된 클래스 사용 가능
+
+
+lr_scheduler:
+    enable: True               # True: 사용 / False: 사용하지 않음 (단, valid_ratio가 0일 경우 validation set이 없어 사용 불가)
+    type: ReduceLROnPlateau     # 사용가능한 lr_scheduler: torch.optim.lr_scheduler 클래스 (https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate)
+    args:                       # 사용하고자 하는 클래스의 파라미터를 참고하여 추가해주시면 되며, 관계가 없는 파라미터는 자동 삭제됩니다.
+        mode: 'min'             # 예) ReduceLROnPlateau / 'min' 또는 'max'
+        factor: 0.1             # 예) ReduceLROnPlateau / 학습률 감소 비율
+        step_size: 10           # 예) StepLR / 학습률 감소 주기 (필수)
+        gamma: 0.1              # 예) StepLR 등 / 학습률 감소 비율
+
+
+train_config:                   # 학습+검증에 관련된 설정 ( tvt, tv, tt 에서 사용됨)
+    epochs: 100                 # 학습 에폭
+    print_period: 5             # 커맨드 라인에 출력할 주기 (로그에는 항상 저장됨)
+    save_best_model: True       # True: val_loss가 최소인 모델 저장 / False: 모델 저장 주기에 따라 저장
+    save_period: 10             # 모델 저장 주기
+    resume:                     # 이전에 학습한 모델을 불러와서 이어서 학습할 경우 사용
+        enable: False
+        load_path:              # 예) saved/checkpoint/model_name-best.pt
+    save_result: True           # 학습+검증에 대한 예측 결과(y, y_pred)를 저장할지 여부
+
+eval_config:                # 테스트에 관련된 설정 ( tvt, p 에서 사용됨 )
+    dataset_phase: test     # 테스트에 사용할 데이터셋. ( 옵션 : all, train+valid, train, valid, test )
+    save_result: True       # 테스트에 대한 예측 결과(y, y_pred)를 저장할지 여부
+
+save_dir:
+    log: saved/log                  # 학습 로그 저장 경로
+    checkpoint: saved/checkpoint   # 학습 모델 저장 경로
+    result: saved/result             # 예측 결과 저장 경로
